@@ -1,0 +1,423 @@
+{
+  "title": "Home Electricity & Solar",
+  "uid": "home-electricity",
+  "timezone": "Europe/Paris",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "",
+  "time": { "from": "now-5y", "to": "now" },
+  "tags": ["electricity", "solar", "energy"],
+  "graphTooltip": 1,
+  "panels": [
+
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total Consumption",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "color": { "mode": "fixed", "fixedColor": "#E05252" },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+          "refId": "A",
+          "query": "from(bucket: \"electricity\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"electricity\" and r._field == \"consumption_wh\")\n  |> sum()\n  |> map(fn: (r) => ({r with _value: r._value / 1000.0}))"
+        }
+      ]
+    },
+
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Total Production",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "color": { "mode": "fixed", "fixedColor": "#F5A623" },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+          "refId": "A",
+          "query": "from(bucket: \"electricity\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"electricity\" and r._field == \"production_wh\")\n  |> sum()\n  |> map(fn: (r) => ({r with _value: r._value / 1000.0}))"
+        }
+      ]
+    },
+
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Grid Import",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "color": { "mode": "fixed", "fixedColor": "#C0392B" },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+          "refId": "A",
+          "query": "from(bucket: \"electricity\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"electricity\" and r._field == \"grid_import_wh\")\n  |> sum()\n  |> map(fn: (r) => ({r with _value: r._value / 1000.0}))"
+        }
+      ]
+    },
+
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Self-Sufficiency",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": { "mode": "fixed", "fixedColor": "#16A085" },
+          "decimals": 1,
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+          "refId": "A",
+          "query": "from(bucket: \"electricity\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"electricity\")\n  |> filter(fn: (r) => r._field == \"consumption_wh\" or r._field == \"grid_import_wh\")\n  |> sum()\n  |> pivot(rowKey: [\"_start\", \"_stop\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n    _time: r._start,\n    _field: \"self_sufficiency\",\n    _measurement: \"electricity\",\n    _value: if r.consumption_wh > 0.0 then (1.0 - r.grid_import_wh / r.consumption_wh) * 100.0 else 0.0\n  }))"
+        }
+      ]
+    },
+
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Power — Real-time (15 min)",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 9 },
+      "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "last"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "pointSize": 3,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "consumption_w" },
+            "properties": [
+              { "id": "displayName", "value": "Consumption" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#E05252" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "production_w" },
+            "properties": [
+              { "id": "displayName", "value": "Production" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#F5A623" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "grid_import_w" },
+            "properties": [
+              { "id": "displayName", "value": "Grid Import" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#C0392B" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "grid_export_w" },
+            "properties": [
+              { "id": "displayName", "value": "Grid Export" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#27AE60" } }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+          "refId": "A",
+          "query": "from(bucket: \"electricity\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"electricity\")\n  |> filter(fn: (r) => r._field == \"consumption_w\" or r._field == \"production_w\" or r._field == \"grid_import_w\" or r._field == \"grid_export_w\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
+        }
+      ]
+    },
+
+    {
+      "id": 6,
+      "type": "barchart",
+      "title": "Daily Energy Balance (kWh)",
+      "gridPos": { "x": 0, "y": 13, "w": 24, "h": 9 },
+      "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+      "options": {
+        "barWidth": 0.7,
+        "groupWidth": 0.7,
+        "stacking": "none",
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "xTickLabelRotation": -30
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 2,
+          "custom": { "fillOpacity": 80 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "consumption_wh" },
+            "properties": [
+              { "id": "displayName", "value": "Consumption" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#E05252" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "production_wh" },
+            "properties": [
+              { "id": "displayName", "value": "Production" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#F5A623" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "grid_import_wh" },
+            "properties": [
+              { "id": "displayName", "value": "Grid Import" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#C0392B" } }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+          "refId": "A",
+          "query": "from(bucket: \"electricity\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"electricity\")\n  |> filter(fn: (r) => r._field == \"consumption_wh\" or r._field == \"production_wh\" or r._field == \"grid_import_wh\")\n  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false)\n  |> map(fn: (r) => ({r with _value: r._value / 1000.0}))"
+        }
+      ]
+    },
+
+    {
+      "id": 7,
+      "type": "barchart",
+      "title": "Monthly Energy Balance (kWh)",
+      "gridPos": { "x": 0, "y": 22, "w": 14, "h": 9 },
+      "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+      "options": {
+        "barWidth": 0.7,
+        "groupWidth": 0.7,
+        "stacking": "none",
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "xTickLabelRotation": -30
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 1,
+          "custom": { "fillOpacity": 80 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "consumption_wh" },
+            "properties": [
+              { "id": "displayName", "value": "Consumption" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#E05252" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "production_wh" },
+            "properties": [
+              { "id": "displayName", "value": "Production" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#F5A623" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "grid_import_wh" },
+            "properties": [
+              { "id": "displayName", "value": "Grid Import" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "#C0392B" } }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+          "refId": "A",
+          "query": "from(bucket: \"electricity\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"electricity\")\n  |> filter(fn: (r) => r._field == \"consumption_wh\" or r._field == \"production_wh\" or r._field == \"grid_import_wh\")\n  |> aggregateWindow(every: 1mo, fn: sum, createEmpty: false)\n  |> map(fn: (r) => ({r with _value: r._value / 1000.0}))"
+        }
+      ]
+    },
+
+    {
+      "id": 8,
+      "type": "gauge",
+      "title": "Self-Sufficiency (period)",
+      "description": "**Self-Sufficiency** answers: *how much of what I consumed did I produce myself?*\n\nFormula: `(1 − grid_import / consumption) × 100`\n\nA high value means you relied little on the grid — your solar panels covered most of your needs.",
+      "gridPos": { "x": 14, "y": 22, "w": 5, "h": 9 },
+      "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#C0392B", "value": null },
+              { "color": "#F5A623", "value": 40 },
+              { "color": "#16A085", "value": 70 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+          "refId": "A",
+          "query": "from(bucket: \"electricity\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"electricity\")\n  |> filter(fn: (r) => r._field == \"consumption_wh\" or r._field == \"grid_import_wh\")\n  |> sum()\n  |> pivot(rowKey: [\"_start\", \"_stop\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n    _time: r._start,\n    _field: \"self_sufficiency\",\n    _measurement: \"electricity\",\n    _value: if r.consumption_wh > 0.0 then (1.0 - r.grid_import_wh / r.consumption_wh) * 100.0 else 0.0\n  }))"
+        }
+      ]
+    },
+
+    {
+      "id": 9,
+      "type": "gauge",
+      "title": "Self-Consumption (period)",
+      "description": "**Self-Consumption** answers: *how much of what I produced did I actually use myself?*\n\nFormula: `self_consumed / production × 100`\n\nA high value means little solar energy was wasted or exported — you used most of what your panels generated.",
+      "gridPos": { "x": 19, "y": 22, "w": 5, "h": 9 },
+      "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#C0392B", "value": null },
+              { "color": "#F5A623", "value": 50 },
+              { "color": "#16A085", "value": 80 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+          "refId": "A",
+          "query": "from(bucket: \"electricity\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"electricity\")\n  |> filter(fn: (r) => r._field == \"production_wh\" or r._field == \"self_consumed_wh\")\n  |> sum()\n  |> pivot(rowKey: [\"_start\", \"_stop\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n    _time: r._start,\n    _field: \"self_consumption\",\n    _measurement: \"electricity\",\n    _value: if r.production_wh > 0.0 then r.self_consumed_wh / r.production_wh * 100.0 else 0.0\n  }))"
+        }
+      ]
+    },
+
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Daily Self-Sufficiency %",
+      "gridPos": { "x": 0, "y": 31, "w": 24, "h": 8 },
+      "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "color": { "mode": "fixed", "fixedColor": "#16A085" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#C0392B", "value": null },
+              { "color": "#F5A623", "value": 40 },
+              { "color": "#16A085", "value": 70 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "electricity_influx" },
+          "refId": "A",
+          "query": "from(bucket: \"electricity\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"electricity\")\n  |> filter(fn: (r) => r._field == \"consumption_wh\" or r._field == \"grid_import_wh\")\n  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false)\n  |> pivot(rowKey: [\"_time\", \"_start\", \"_stop\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n    _time: r._time,\n    _field: \"self_sufficiency\",\n    _measurement: \"electricity\",\n    _value: if r.consumption_wh > 0.0 then (1.0 - r.grid_import_wh / r.consumption_wh) * 100.0 else 0.0\n  }))"
+        }
+      ]
+    }
+
+  ]
+}

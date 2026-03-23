@@ -1,0 +1,2 @@
+influxdb-client>=1.38.0
+pandas>=1.5.0

@@ -1,0 +1,18 @@
+# Private data — never commit real exports
+data_export_*.csv
+
+# Local secrets
+.env
+
+# Generated outputs
+charts/
+__pycache__/
+*.pyc
+*.pyo
+
+# Claude Code internals
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
